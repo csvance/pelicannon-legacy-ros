@@ -15,7 +15,8 @@ class ObjectDetector(object):
     def __init__(self, debug=False):
         self._debug = debug
         self._initialize_pipelines()
-        self._br = CvBridge()
+        self._cv_br = CvBridge()
+        self.phi = None
 
         self._ros_init()
 
@@ -37,7 +38,7 @@ class ObjectDetector(object):
 
         time_i = datetime.datetime.now()
 
-        frame = self._br.imgmsg_to_cv2(image, desired_encoding="passthrough")
+        frame = self._cv_br.imgmsg_to_cv2(image, desired_encoding="passthrough")
         frame_original = frame.copy()
 
         # Create grayscale versions
@@ -54,7 +55,7 @@ class ObjectDetector(object):
                 cv2.rectangle(frame_original, (rect.x, rect.y),
                               (rect.x + rect.w, rect.y + rect.h), (0, 255, 0), 2)
 
-        rectangles = self._motion_detector.process_frame(frame_grayscale, phi=None)
+        rectangles = self._motion_detector.process_frame(frame_grayscale, phi=self.phi)
         for rect in rectangles:
             if self._debug:
                 # print(rect)
