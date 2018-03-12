@@ -1,36 +1,53 @@
 #!/usr/bin/env python
 
 import StringIO
+import datetime
+import signal
+import socket
 import time
+import cv2
+import rospy
+
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import ThreadingMixIn
 from cv_bridge import CvBridge
-from threading import Lock
-import signal
-import socket
-import datetime
-
+from threading import Lock, Event
 import Image as PyImage
-import cv2
-import rospy
+
 from pelicannon.msg import CategorizedRegionsOfInterest
 from sensor_msgs.msg import Image
-from Queue import Queue
 
-image_queue = Queue(maxsize=1)
+last_frame_lock = Lock()
+last_frame_event = Event()
+last_frame = None
+streaming_event = Event()
 
 
 class FrameHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        global last_frame, last_frame_lock, last_frame_event, streaming_event
+
         if self.path.endswith('.mjpg'):
+
             self.send_response(200)
             self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
             self.end_headers()
+
             while True:
                 try:
-                    img = image_queue.get(timeout=1)
 
-                    imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    if last_frame is None:
+                        return
+
+                    if last_frame_event.wait(timeout=1.) is not True:
+                        return
+
+                    last_frame_lock.acquire()
+                    imgRGB = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
+                    last_frame_lock.release()
+
+                    last_frame_event.clear()
+
                     jpg = PyImage.fromarray(imgRGB)
                     tmpFile = StringIO.StringIO()
                     jpg.save(tmpFile, 'JPEG')
@@ -39,16 +56,20 @@ class FrameHandler(BaseHTTPRequestHandler):
                     self.send_header('Content-length', str(tmpFile.len))
                     self.end_headers()
                     jpg.save(self.wfile, 'JPEG')
-                    time.sleep(0.05)
                 except KeyboardInterrupt:
                     break
-            return
-        if self.path.endswith('.html'):
+
+        elif self.path.endswith('.html'):
+
+            # Let the camera pipeline spool up
+            streaming_event.set()
+            time.sleep(0.1)
+
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write('<html><head></head><body>')
-            self.wfile.write('<img src="http://127.0.0.1:8080/cam.mjpg"/>')
+            self.wfile.write('<img style="width: 100%;" src="http://192.168.2.3:8080/cam.mjpg"/>')
             self.wfile.write('</body></html>')
             return
 
@@ -85,7 +106,13 @@ class DebugNode(object):
         self._roi_lock.release()
 
     def _camera_callback(self, image):
-        global image_queue, image_event
+        global last_frame, last_frame_lock, streaming_event
+
+        # Only process frames when we have an active connection
+        if not streaming_event.isSet():
+            self._frames_processed = 0
+            self._start_time = datetime.datetime.now()
+            return
 
         time_delta = datetime.datetime.now() - self._start_time
         seconds_run = time_delta.seconds + time_delta.microseconds / 1000000.
@@ -107,9 +134,12 @@ class DebugNode(object):
                               (roi.x + roi.w, roi.y + roi.h), (255, 0, 0), 2)
         self._roi_lock.release()
 
-        with image_queue.mutex:
-            image_queue.queue.clear()
-        image_queue.put(frame)
+        last_frame_lock.acquire()
+        last_frame = frame
+        last_frame_lock.release()
+
+        # Notify streamers that we have new data
+        last_frame_event.set()
 
         self._frames_processed += 1
 
@@ -128,7 +158,7 @@ class DebugNode(object):
 
 
 def stop_signal_callback(signo, stack_frame):
-        node.shutdown()
+    node.shutdown()
 
 
 if __name__ == "__main__":
