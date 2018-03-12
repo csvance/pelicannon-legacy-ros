@@ -16,7 +16,8 @@ class ObjectDetectorNode(object):
         self._initialize_pipelines()
         self._cv_br = CvBridge()
 
-        self.phi = None
+        self._last_yaw = None
+        self.delta_phi = None
 
         self._ros_init()
 
@@ -37,7 +38,13 @@ class ObjectDetectorNode(object):
             self._video_writer = None
 
     def _ahrs_callback(self, ninedof):
-        pass
+
+        if self._last_yaw is None:
+            self._last_yaw = ninedof.yaw
+            return
+
+        self.delta_phi = ninedof.yaw - self._last_yaw
+        self._last_yaw = ninedof.yaw
 
     def _camera_callback(self, image):
 
@@ -54,7 +61,7 @@ class ObjectDetectorNode(object):
 
         # Send data down pipeline and process results
         haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
-        motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=self.phi)
+        motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=self.delta_phi)
 
         regions = []
         for rect in haarcascade_regions:

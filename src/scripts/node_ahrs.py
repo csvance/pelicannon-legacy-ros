@@ -15,9 +15,9 @@ class AHRSNode(object):
 
     def _ros_init(self):
         rospy.init_node('ahrs')
-        self._publisher = rospy.Publisher('heading', AHRS, queue_size=10)
+        self._publisher = rospy.Publisher('euler_angles', AHRS, queue_size=10)
 
-        rospy.Subscriber("euler_angles", NineDoFs, self._ninedof_callback)
+        rospy.Subscriber("ninedofs", NineDoFs, self._ninedof_callback)
 
     def _ninedof_callback(self, ninedofs):
 
@@ -37,7 +37,7 @@ class AHRSNode(object):
                                    m.y * math.sin(pitch) * math.sin(roll) +
                                    m.z * math.sin(pitch) * math.cos(roll))
 
-            rospy.loginfo(rospy.get_caller_id() + "Pitch %.2f Roll %.2f Yaw %.2f" % (pitch, roll, yaw))
+            # rospy.loginfo(rospy.get_caller_id() + "Pitch %.2f Roll %.2f Yaw %.2f" % (pitch, roll, yaw))
 
             self._publisher.publish(AHRS(pitch=pitch, roll=roll, yaw=yaw)
 )
