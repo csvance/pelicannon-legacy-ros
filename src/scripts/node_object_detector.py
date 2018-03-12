@@ -23,9 +23,9 @@ class ObjectDetectorNode(object):
 
     def _ros_init(self):
         rospy.init_node('object_detector')
-        self._publisher = rospy.Publisher('object_segments', CategorizedRegionsOfInterest, queue_size=10)
+        self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=10)
 
-        rospy.Subscriber("/camera/image_raw", Image, self._camera_callback)
+        rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
         rospy.Subscriber("euler_angles", AHRS, self._ahrs_callback)
 
     def _initialize_pipelines(self):

@@ -109,12 +109,12 @@ generate_messages(
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-#catkin_package(
-# INCLUDE_DIRS include
-# LIBRARIES pelicannon
-# CATKIN_DEPENDS message_runtime message_generation roscpp rospy sensor_msgs std_msgs
-# DEPENDS system_lib
-#)
+catkin_package(
+INCLUDE_DIRS include
+ LIBRARIES pelicannon
+ CATKIN_DEPENDS message_runtime roscpp rospy sensor_msgs std_msgs
+ DEPENDS system_lib
+)
 
 ###########
 ## Build ##
@@ -170,6 +170,7 @@ install(PROGRAMS
   scripts/node_object_detector.py
   scripts/node_lsm9ds0.py
   scripts/node_ahrs.py
+  scripts/node_debug.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -1,14 +1,10 @@
 import cv2
 import numpy as np
 import skimage.measure
-from math import pi
-
-import cv2
+import math
 
 
 class ImageTransformer(object):
-    """ Perspective transformation class for image
-        with shape (height, width, #channels) """
 
     def __init__(self, image):
         self.image = image
@@ -131,7 +127,7 @@ class MotionTrackerPipeline(object):
             frame_initial_warped = np.reshape(frame_initial.copy(), (frame.shape[0], frame.shape[1], 1))
 
             # Needs to be calibrated more
-            dx = int(-2. / 15. * phi_deg)
+            dx = int(-2. / 15. * phi * 180. / math.pi)
 
             it = ImageTransformer(frame_initial_warped)
             frame_initial_warped = it.rotate_along_axis(phi=phi, dx=dx)
