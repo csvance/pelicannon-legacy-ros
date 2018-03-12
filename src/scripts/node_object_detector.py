@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import cv2
+import math
 from tracker import BodyTrackerPipeline, MotionTrackerPipeline
 import datetime
+from threading import Lock
 from cv_bridge import CvBridge
 
 import rospy
@@ -16,8 +18,8 @@ class ObjectDetectorNode(object):
         self._initialize_pipelines()
         self._cv_br = CvBridge()
 
-        self._last_yaw = None
-        self.delta_phi = None
+        self._last_yaw_lock = Lock()
+        self._last_yaw = []
 
         self._ros_init()
 
@@ -37,14 +39,28 @@ class ObjectDetectorNode(object):
         else:
             self._video_writer = None
 
+    @staticmethod
+    def angle_diff(theta_i, theta_f):
+        if abs(theta_f - theta_i) <= math.pi:
+            return theta_f - theta_i
+        else:
+            if theta_f > theta_i:
+                theta_f = theta_f - 2 * math.pi
+            elif theta_f < theta_i:
+                theta_i = theta_i - 2 * math.pi
+
+            return theta_f - theta_i
+
     def _ahrs_callback(self, ninedof):
 
-        if self._last_yaw is None:
-            self._last_yaw = ninedof.yaw
+        self._last_yaw_lock.acquire()
+        if len(self._last_yaw) == 0:
+            self._last_yaw.append(ninedof.yaw)
+            self._last_yaw_lock.release()
             return
 
-        self.delta_phi = ninedof.yaw - self._last_yaw
-        self._last_yaw = ninedof.yaw
+        self._last_yaw.append(ninedof.yaw)
+        self._last_yaw_lock.release()
 
     def _camera_callback(self, image):
 
@@ -59,9 +75,18 @@ class ObjectDetectorNode(object):
         # Does this improve performance? In example code in OpenCV documentation.
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
 
+        # Caclulate self motion
+        self._last_yaw_lock.acquire()
+        if len(self._last_yaw) < 2:
+            delta_phi = None
+        else:
+            delta_phi = ObjectDetectorNode.angle_diff(self._last_yaw[0], self._last_yaw[-1])
+            self._last_yaw = []
+        self._last_yaw_lock.release()
+
         # Send data down pipeline and process results
         haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
-        motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=self.delta_phi)
+        motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=delta_phi)
 
         regions = []
         for rect in haarcascade_regions:
