@@ -1,5 +1,4 @@
 from threading import Thread, Event
-from Queue import Queue
 from sysfs_gpio import GPIO
 from smbus import SMBus
 import math

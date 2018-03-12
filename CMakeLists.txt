@@ -53,6 +53,10 @@ add_message_files(
   FILES
   XYZ.msg
   NineDoF.msg
+  NineDoFs.msg
+  CategorizedRegionOfInterest.msg
+  CategorizedRegionsOfInterest.msg
+  AHRS.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -70,10 +74,11 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   sensor_msgs#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  sensor_msgs
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -104,12 +109,12 @@ add_message_files(
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES pelicannon
-#  CATKIN_DEPENDS message_generation roscpp rospy sensor_msgs std_msgs
-#  DEPENDS system_lib
-)
+#catkin_package(
+# INCLUDE_DIRS include
+# LIBRARIES pelicannon
+# CATKIN_DEPENDS message_runtime message_generation roscpp rospy sensor_msgs std_msgs
+# DEPENDS system_lib
+#)
 
 ###########
 ## Build ##
@@ -162,7 +167,9 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
-  scripts/object_detector.py
+  scripts/node_object_detector.py
+  scripts/node_lsm9ds0.py
+  scripts/node_ahrs.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

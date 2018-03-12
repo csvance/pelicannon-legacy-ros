@@ -95,6 +95,5 @@ class MotionTrackerPipeline(object):
 
         # Store this frame as the next frame initial
         self.frame_initial = frame_final
-        print(rectangles)
         return rectangles
 
