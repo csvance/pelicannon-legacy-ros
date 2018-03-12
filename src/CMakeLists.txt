@@ -8,6 +8,7 @@ project(pelicannon)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   roscpp
   rospy
   sensor_msgs
@@ -48,11 +49,11 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  XYZ.msg
+  NineDoF.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -106,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pelicannon
-#  CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs
+#  CATKIN_DEPENDS message_generation roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 
@@ -162,10 +163,6 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
   scripts/object_detector.py
-  scripts/lsm9ds0.py
-  scripts/image_transformer.py
-  scripts/sysfs_gpio.py
-  scripts/tracker.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
