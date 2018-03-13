@@ -1,10 +1,9 @@
+import math
+from cv_bridge import CvBridge
+
 import cv2
 import numpy as np
-import skimage.measure
-import math
 import rospy
-
-from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 
@@ -132,7 +131,6 @@ class MotionTrackerPipeline(object):
         frame_final = frame
 
         if yaw_velocity is not None and delta_t != 0.:
-
             phi = yaw_velocity * delta_t
             # print("Phi(%.3f) = YawV(%.3f) DeltaT(%.3f)" % (phi, yaw_velocity, delta_t))
 
@@ -144,7 +142,8 @@ class MotionTrackerPipeline(object):
             it = ImageTransformer(frame_initial_warped)
             frame_initial_warped = it.rotate_along_axis(phi=phi, dx=dx)
 
-            self._publisher_image_transform.publish(self._cv_br.cv2_to_imgmsg(frame_initial_warped, encoding="passthrough"))
+            self._publisher_image_transform.publish(
+                self._cv_br.cv2_to_imgmsg(frame_initial_warped, encoding="passthrough"))
 
             frame_initial = frame_initial_warped
 
@@ -152,10 +151,10 @@ class MotionTrackerPipeline(object):
 
         if yaw_velocity is not None:
             frame_delta[0:frame_y, 0:frame_delta.shape[1]] = 0
-            frame_delta[frame_delta.shape[0]-frame_y:frame_delta.shape[0], 0:frame_delta.shape[1]] = 0
+            frame_delta[frame_delta.shape[0] - frame_y:frame_delta.shape[0], 0:frame_delta.shape[1]] = 0
 
             frame_delta[0:frame_delta.shape[0], 0:frame_x] = 0
-            frame_delta[0:frame_delta.shape[0], frame_delta.shape[1]-frame_x:frame_delta.shape[1]] = 0
+            frame_delta[0:frame_delta.shape[0], frame_delta.shape[1] - frame_x:frame_delta.shape[1]] = 0
 
         self._publisher_image_abs_diff.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
 
@@ -171,11 +170,11 @@ class MotionTrackerPipeline(object):
         rectangles = []
         for c in cnts:
             area = cv2.contourArea(c)
-            if area < int(self.coeff_min_area*pool.shape[0]*pool.shape[1]) or area > int(self.coeff_max_area*pool.shape[0]*pool.shape[1]):
+            if area < int(self.coeff_min_area * pool.shape[0] * pool.shape[1]) or area > int(
+                    self.coeff_max_area * pool.shape[0] * pool.shape[1]):
                 continue
             rectangles.append(Rectangle(cv2.boundingRect(c)))
 
         # Store this frame as the next frame initial
         self.frame_initial = frame_final
         return rectangles
-

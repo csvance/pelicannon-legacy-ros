@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import math
+
 import rospy
-import numpy as np
-from pelicannon.msg import XYZ, AHRS, NineDoF, NineDoFs, AngularVelocity
+from pelicannon.msg import XYZ, AHRS, NineDoFs, AngularVelocity
 
 
 def xyz(t):
@@ -17,7 +17,6 @@ class AHRSNode(object):
         self.last_pitch = None
         self.last_roll = None
         self.last_yaw = None
-
 
     def _ros_init(self):
         rospy.init_node('ahrs')
@@ -44,9 +43,9 @@ class AHRSNode(object):
                 pitch = math.atan(-a.x / (a.y * math.sin(roll) + (a.z * math.cos(roll))))
 
             yaw = math.atan2(m.z * math.sin(roll) - m.y * math.cos(roll),
-                                   m.x * math.cos(pitch) +
-                                   m.y * math.sin(pitch) * math.sin(roll) +
-                                   m.z * math.sin(pitch) * math.cos(roll))
+                             m.x * math.cos(pitch) +
+                             m.y * math.sin(pitch) * math.sin(roll) +
+                             m.z * math.sin(pitch) * math.cos(roll))
 
             self._publisher_ahrs.publish(AHRS(pitch=pitch, roll=roll, yaw=yaw))
 

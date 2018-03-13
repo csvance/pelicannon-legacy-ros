@@ -5,15 +5,14 @@ import datetime
 import signal
 import socket
 import time
-import cv2
-import rospy
-
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import ThreadingMixIn
 from cv_bridge import CvBridge
 from threading import Lock, Event
-import Image as PyImage
 
+import Image as PyImage
+import cv2
+import rospy
 from pelicannon.msg import CategorizedRegionsOfInterest
 from sensor_msgs.msg import Image
 

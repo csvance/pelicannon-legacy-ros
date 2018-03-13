@@ -1,11 +1,11 @@
-from threading import Thread, Event
-from sysfs_gpio import GPIO
-from smbus import SMBus
 import math
+from smbus import SMBus
+from threading import Thread, Event
+
+from sysfs_gpio import GPIO
 
 
 class LSM9DS0(object):
-
     AUTO_INC = 0b10000000
 
     XM_ADDRESS = 0x1D
@@ -170,7 +170,6 @@ class LSM9DS0(object):
         self._i2c_write_byte(LSM9DS0.G_ADDRESS, LSM9DS0.FIFO_CTRL_REG, 0b00000000)
         self._i2c_write_byte(LSM9DS0.XM_ADDRESS, LSM9DS0.FIFO_CTRL_REG, 0b00000000)
 
-
     def _init_registers(self):
 
         self._disable_fifo_irq()
@@ -218,7 +217,7 @@ class LSM9DS0(object):
         z = data[4] | data[5] << 8
         z = z if z <= 32767 else z - 65536
 
-        return x*math.pi / 180., y*math.pi / 180., z*math.pi / 180.
+        return x * math.pi / 180., y * math.pi / 180., z * math.pi / 180.
 
     def _read_fifo(self):
         # Mag
