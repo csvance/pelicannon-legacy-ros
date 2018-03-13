@@ -119,7 +119,7 @@ class MotionTrackerPipeline(object):
         self.coeff_max_area = coeff_max_area
 
         self._cv_br = CvBridge()
-        self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image)
+        self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image, queue_size=10)
 
     def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
 
