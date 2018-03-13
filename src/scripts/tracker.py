@@ -121,7 +121,7 @@ class MotionTrackerPipeline(object):
         self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image, queue_size=10)
         self._publisher_image_transform = rospy.Publisher('image_transform', Image, queue_size=10)
 
-    def process_frame(self, frame, delta_t, yaw_velocity=None, frame_x=10, frame_y=10):
+    def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
 
         if self.frame_initial is None:
             self.frame_initial = frame
@@ -130,10 +130,7 @@ class MotionTrackerPipeline(object):
         frame_initial = self.frame_initial
         frame_final = frame
 
-        if yaw_velocity is not None and delta_t != 0.:
-            phi = yaw_velocity * delta_t
-            # print("Phi(%.3f) = YawV(%.3f) DeltaT(%.3f)" % (phi, yaw_velocity, delta_t))
-
+        if phi is not None:
             frame_initial_warped = np.reshape(frame_initial.copy(), (frame.shape[0], frame.shape[1], 1))
 
             # Needs to be calibrated more
@@ -149,7 +146,7 @@ class MotionTrackerPipeline(object):
 
         frame_delta = cv2.absdiff(frame_initial, frame_final)
 
-        if yaw_velocity is not None:
+        if phi is not None:
             frame_delta[0:frame_y, 0:frame_delta.shape[1]] = 0
             frame_delta[frame_delta.shape[0] - frame_y:frame_delta.shape[0], 0:frame_delta.shape[1]] = 0
 

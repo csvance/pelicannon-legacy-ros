@@ -116,11 +116,13 @@ class LSM9DS0(object):
     GYROSCALE_500DPS = 0b01 << 4
     GYROSCALE_2000DPS = 0b10 << 4
 
-    def __init__(self, callback, gpio_interrupt_num=161, i2c_bus_num=0, fifo_size=4):
+    def __init__(self, callback, gpio_interrupt_num=161, i2c_bus_num=0, fifo_size=32,
+                 gyro_cal=[-0.444466, 0.166819, -1.027545]):
 
         self._pin_int_gpio_num = gpio_interrupt_num
         self._i2c_bus_num = i2c_bus_num
         self._fifo_size = fifo_size
+        self._gyro_cal = gyro_cal
 
         # Hardware Resources
         self._pin_int = None
@@ -204,6 +206,9 @@ class LSM9DS0(object):
         # Enable FIFO watermark interupt on DRDY
         self._i2c_write_byte(LSM9DS0.G_ADDRESS, LSM9DS0.CTRL_REG3_G, 0b00000100)
 
+        # Block update, 2000 dps
+        self._i2c_write_byte(LSM9DS0.G_ADDRESS, LSM9DS0.CTRL_REG4_G, 0b00110000)
+
         # FIFO Mode
         self._i2c_write_byte(LSM9DS0.G_ADDRESS, LSM9DS0.CTRL_REG5_G, 0b01000000)
 
@@ -217,6 +222,10 @@ class LSM9DS0(object):
         z = data[4] | data[5] << 8
         z = z if z <= 32767 else z - 65536
 
+        return x, y, z
+
+    def _rad(self, data):
+        x, y, z = data
         return x * math.pi / 180., y * math.pi / 180., z * math.pi / 180.
 
     def _read_fifo(self):
@@ -236,7 +245,8 @@ class LSM9DS0(object):
         gyro_data = []
         for i in range(0, self._fifo_size):
             data = self._smbus.read_i2c_block_data(LSM9DS0.G_ADDRESS, LSM9DS0.OUT_X_L_G | LSM9DS0.AUTO_INC, 6)
-            gyro_data.append(self._xyz(data))
+            x, y, z = self._rad(self._xyz(data))
+            gyro_data.append((x - self._gyro_cal[0], y - self._gyro_cal[1], z - self._gyro_cal[2]))
 
         # Send data to callback
         self._callback(accel_data, mag_data, gyro_data)

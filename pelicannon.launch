@@ -31,4 +31,11 @@
     <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen"/>
     <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen"/>
   </group>
+  <node pkg="imu_filter_madgwick" type="imu_filter_node" name="madgwick" output="screen">
+   <param name="use_mag" value="true"/>
+   <param name="use_magnetic_field_msg" value="true"/>
+   <param name="stateless" value="false"/>
+   <param name="constant_dt" value="0.0"/>
+   <param name="gain" value="0.1"/>
+  </node>
 </launch>
