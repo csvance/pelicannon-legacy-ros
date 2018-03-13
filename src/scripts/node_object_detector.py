@@ -6,7 +6,8 @@ from threading import Lock
 
 import cv2
 import rospy
-from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest, AHRS, AngularVelocity
+from geometry_msgs.msg import Vector3
+from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest
 from sensor_msgs.msg import Image
 
 from tracker import BodyTrackerPipeline, MotionTrackerPipeline
@@ -33,8 +34,8 @@ class ObjectDetectorNode(object):
         self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=10)
 
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
-        rospy.Subscriber("euler_angles", AHRS, self._ahrs_callback)
-        rospy.Subscriber('angular_velocity', AngularVelocity, self._angular_velocity_callback)
+        rospy.Subscriber("euler_angles", Vector3, self._ahrs_callback)
+        rospy.Subscriber('angular_velocity', Vector3, self._angular_velocity_callback)
 
     def _initialize_pipelines(self):
         self._body_tracker = BodyTrackerPipeline()
@@ -76,14 +77,15 @@ class ObjectDetectorNode(object):
         # Send data down pipeline and process results
         haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
         motion_regions = self._motion_detector.process_frame(frame_grayscale, delta_t,
-                                                             yaw_velocity=self._angular_velocity.yaw if self._angular_velocity is not None else None)
+                                                             yaw_velocity=self._angular_velocity.z if self._angular_velocity is not None else None)
 
         regions = []
-        for rect in haarcascade_regions:
-            regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='body'))
+        for region in haarcascade_regions:
+            regions.append(CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='body'))
 
-        for rect in motion_regions:
-            regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='motion'))
+        for region in motion_regions:
+            regions.append(
+                CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='motion'))
 
         self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
 

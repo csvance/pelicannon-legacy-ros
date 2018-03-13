@@ -3,7 +3,8 @@
 import math
 
 import rospy
-from pelicannon.msg import XYZ, AHRS, NineDoFs, AngularVelocity
+from geometry_msgs.msg import Vector3
+from pelicannon.msg import NineDoFs
 
 
 def xyz(t):
@@ -20,8 +21,8 @@ class AHRSNode(object):
 
     def _ros_init(self):
         rospy.init_node('ahrs')
-        self._publisher_ahrs = rospy.Publisher('euler_angles', AHRS, queue_size=10)
-        self._publisher_angular_velocity = rospy.Publisher('angular_velocity', AngularVelocity, queue_size=10)
+        self._publisher_ahrs = rospy.Publisher('euler_angles', Vector3, queue_size=10)
+        self._publisher_angular_velocity = rospy.Publisher('angular_velocity', Vector3, queue_size=10)
 
         rospy.Subscriber("ninedofs", NineDoFs, self._ninedof_callback)
 
@@ -47,7 +48,7 @@ class AHRSNode(object):
                              m.y * math.sin(pitch) * math.sin(roll) +
                              m.z * math.sin(pitch) * math.cos(roll))
 
-            self._publisher_ahrs.publish(AHRS(pitch=pitch, roll=roll, yaw=yaw))
+            self._publisher_ahrs.publish(Vector3(x=pitch, y=roll, z=yaw))
 
             if self.last_pitch is not None:
                 delta_pitch += pitch - self.last_pitch
@@ -62,7 +63,7 @@ class AHRSNode(object):
         av_roll = delta_roll / ninedofs.delta_t
         av_yaw = delta_yaw / ninedofs.delta_t
 
-        self._publisher_angular_velocity.publish(AngularVelocity(pitch=av_pitch, roll=av_roll, yaw=av_yaw))
+        self._publisher_angular_velocity.publish(Vector3(x=av_pitch, y=av_roll, z=av_yaw))
 
 
 if __name__ == "__main__":

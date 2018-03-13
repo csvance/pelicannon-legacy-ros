@@ -1,3 +1,3 @@
-XYZ accelerometer
-XYZ magnometer
-XYZ gyrometer
+geometry_msgs/Vector3 accelerometer
+geometry_msgs/Vector3 magnometer
+geometry_msgs/Vector3 gyrometer

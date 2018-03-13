@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import rospy
-from pelicannon.msg import NineDoFs, NineDoF, XYZ
+from geometry_msgs.msg import Vector3
+from pelicannon.msg import NineDoFs, NineDoF
 
 from lsm9ds0 import LSM9DS0
 
@@ -20,9 +21,9 @@ class LSM9DS0Node(object):
     def _sensor_callback(self, accelerometer, magnometer, gyrometer):
         ninedofs = []
         for i in range(0, len(accelerometer)):
-            a = XYZ(x=accelerometer[i][0], y=accelerometer[i][1], z=accelerometer[i][2])
-            m = XYZ(x=magnometer[i][0], y=magnometer[i][1], z=magnometer[i][2])
-            g = XYZ(x=gyrometer[i][0], y=gyrometer[i][1], z=gyrometer[i][2])
+            a = Vector3(x=accelerometer[i][0], y=accelerometer[i][1], z=accelerometer[i][2])
+            m = Vector3(x=magnometer[i][0], y=magnometer[i][1], z=magnometer[i][2])
+            g = Vector3(x=gyrometer[i][0], y=gyrometer[i][1], z=gyrometer[i][2])
 
             ninedofs.append(NineDoF(accelerometer=a, magnometer=m, gyrometer=g))
 

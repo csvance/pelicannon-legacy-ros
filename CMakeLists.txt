@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -51,13 +52,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  XYZ.msg
   NineDoF.msg
   NineDoFs.msg
   CategorizedRegionOfInterest.msg
   CategorizedRegionsOfInterest.msg
-  AHRS.msg
-  AngularVelocity.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -79,6 +77,7 @@ generate_messages(
   DEPENDENCIES
   sensor_msgs
   std_msgs
+  geometry_msgs
 )
 
 ################################################
@@ -113,7 +112,7 @@ generate_messages(
 catkin_package(
 INCLUDE_DIRS include
  LIBRARIES pelicannon
- CATKIN_DEPENDS message_runtime roscpp rospy sensor_msgs std_msgs
+ CATKIN_DEPENDS message_runtime roscpp rospy sensor_msgs std_msgs geometry_msgs
  DEPENDS system_lib
 )
 

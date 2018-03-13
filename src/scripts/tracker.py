@@ -170,8 +170,8 @@ class MotionTrackerPipeline(object):
         rectangles = []
         for c in cnts:
             area = cv2.contourArea(c)
-            if area < int(self.coeff_min_area * pool.shape[0] * pool.shape[1]) or area > int(
-                    self.coeff_max_area * pool.shape[0] * pool.shape[1]):
+            if area < int(self.coeff_min_area * frame.shape[0] * frame.shape[1]) or area > int(
+                    self.coeff_max_area * frame.shape[0] * frame.shape[1]):
                 continue
             rectangles.append(Rectangle(cv2.boundingRect(c)))
 
