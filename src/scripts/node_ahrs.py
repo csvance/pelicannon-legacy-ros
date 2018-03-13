@@ -31,8 +31,6 @@ class AHRSNode(object):
                                                       imu.orientation.w]))
         self._timestamp_queue.append(imu.header.stamp.to_sec())
 
-        # print("av_pitch(%f) av_roll(%f) av_yaw(%f)" % (self._euler_que[-1][0], self._euler_que[-1][1], self._euler_que[-1][2]))
-
         delta_pitch = 0.
         delta_roll = 0.
         delta_yaw = 0.
@@ -69,7 +67,6 @@ class AHRSNode(object):
             av_roll = delta_roll / delta_time
             av_yaw = delta_yaw / delta_time
 
-            print("av_pitch(%f) av_roll(%f) av_yaw(%f)" % (av_pitch, av_roll, av_yaw))
             self._publisher_angular_velocity.publish(Vector3(x=av_roll, y=av_pitch, z=av_yaw))
 
 
