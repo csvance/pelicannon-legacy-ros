@@ -2,6 +2,10 @@ import cv2
 import numpy as np
 import skimage.measure
 import math
+import rospy
+
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 
 
 class ImageTransformer(object):
@@ -114,7 +118,10 @@ class MotionTrackerPipeline(object):
         self.coeff_min_area = coeff_min_area
         self.coeff_max_area = coeff_max_area
 
-    def process_frame(self, frame, phi=None, rescale=(1., 1.)):
+        self._cv_br = CvBridge()
+        self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image)
+
+    def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
 
         if self.frame_initial is None:
             self.frame_initial = frame
@@ -124,6 +131,7 @@ class MotionTrackerPipeline(object):
         frame_final = frame
 
         if phi is not None:
+            phi = phi*2
             frame_initial_warped = np.reshape(frame_initial.copy(), (frame.shape[0], frame.shape[1], 1))
 
             # Needs to be calibrated more
@@ -131,27 +139,31 @@ class MotionTrackerPipeline(object):
 
             it = ImageTransformer(frame_initial_warped)
             frame_initial_warped = it.rotate_along_axis(phi=phi, dx=dx)
+
             frame_initial = frame_initial_warped
 
         frame_delta = cv2.absdiff(frame_initial, frame_final)
 
         if phi is not None:
-            # zero things based on our dx shifting
-            if dx > 0:
-                frame_delta[0:rescale[1], 0:dx] = 0
-            elif dx < 0:
-                frame_delta[0:rescale[1], dx:rescale[1]] = 0
+            frame_delta[0:frame_y, 0:frame_delta.shape[1]] = 0
+            frame_delta[frame_delta.shape[0]-frame_y:frame_delta.shape[0], 0:frame_delta.shape[1]] = 0
 
-        pool = skimage.measure.block_reduce(frame_delta, (2, 2), np.average).astype(np.uint8)
+            frame_delta[0:frame_delta.shape[0], 0:frame_x] = 0
+            frame_delta[0:frame_delta.shape[0], frame_delta.shape[1]-frame_x:frame_delta.shape[1]] = 0
+
+        self._publisher_image_abs_diff.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
+
+        # pool = skimage.measure.block_reduce(frame_delta, (2, 2), np.average).astype(np.uint8)
+        pool = frame_delta
 
         pool_scale_x = frame.shape[0] / pool.shape[0]
         pool_scale_y = frame.shape[1] / pool.shape[1]
 
-        thresh = cv2.threshold(pool, 25, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(pool, 32, 255, cv2.THRESH_BINARY)[1]
 
         # dilate the thresholded image to fill in holes, then find contours
         # on thresholded image
-        thresh = cv2.dilate(thresh, None, iterations=2)
+        thresh = cv2.dilate(thresh, None, iterations=3)
 
         (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                      cv2.CHAIN_APPROX_SIMPLE)

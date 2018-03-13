@@ -18,8 +18,9 @@ class ObjectDetectorNode(object):
         self._initialize_pipelines()
         self._cv_br = CvBridge()
 
-        self._last_yaw_lock = Lock()
-        self._last_yaw = []
+        self._ahrs_lock = Lock()
+        self._last_ahrs = None
+        self._current_ahrs = None
 
         self._ros_init()
 
@@ -51,63 +52,59 @@ class ObjectDetectorNode(object):
 
             return theta_f - theta_i
 
-    def _ahrs_callback(self, ninedof):
+    def _ahrs_callback(self, ahrs):
 
-        self._last_yaw_lock.acquire()
-        if len(self._last_yaw) == 0:
-            self._last_yaw.append(ninedof.yaw)
-            self._last_yaw_lock.release()
-            return
-
-        self._last_yaw.append(ninedof.yaw)
-        self._last_yaw_lock.release()
+        self._ahrs_lock.acquire()
+        if self._current_ahrs is None:
+            self._current_ahrs = ahrs
+        else:
+            self._last_ahrs = self._current_ahrs
+            self._current_ahrs = ahrs
+        self._ahrs_lock.release()
 
     def _camera_callback(self, image):
+
+        insufficient_data_flag = False
 
         time_i = datetime.datetime.now()
 
         frame = self._cv_br.imgmsg_to_cv2(image, desired_encoding="passthrough")
-        frame_original = frame.copy()
 
         # Create grayscale versions
         frame_grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+        # Noise reduction
+        frame_grayscale = cv2.GaussianBlur(frame_grayscale, (5, 5), 0)
+
         # Does this improve performance? In example code in OpenCV documentation.
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
 
-        # Caclulate self motion
-        self._last_yaw_lock.acquire()
-        if len(self._last_yaw) < 2:
-            delta_phi = None
+        self._ahrs_lock.acquire()
+        if self._current_ahrs is None or self._last_ahrs is None:
+            insufficient_data_flag = True
         else:
-            delta_phi = ObjectDetectorNode.angle_diff(self._last_yaw[0], self._last_yaw[-1])
-            self._last_yaw = []
-        self._last_yaw_lock.release()
+            delta_phi = ObjectDetectorNode.angle_diff(self._current_ahrs.yaw, self._last_ahrs.yaw)
+        self._ahrs_lock.release()
 
-        # Send data down pipeline and process results
-        haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
-        motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=delta_phi)
+        if not insufficient_data_flag:
+            # Send data down pipeline and process results
+            haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
+            motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=delta_phi if delta_phi >= 0.01 else None)
 
-        regions = []
-        for rect in haarcascade_regions:
-            regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='body'))
+            regions = []
+            for rect in haarcascade_regions:
+                regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='body'))
+
+            for rect in motion_regions:
+                regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='motion'))
+
+            self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
+
+            time_f = datetime.datetime.now()
+
             if self._debug:
-                cv2.rectangle(frame_original, (rect.x, rect.y),
-                              (rect.x + rect.w, rect.y + rect.h), (0, 255, 0), 2)
+                rospy.loginfo(rospy.get_caller_id() + "Frame processed in %s", time_f - time_i)
 
-        for rect in motion_regions:
-            regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='motion'))
-            if self._debug:
-                cv2.rectangle(frame_original, (rect.x, rect.y),
-                              (rect.x + rect.w, rect.y + rect.h), (255, 0, 0), 2)
-
-        self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
-
-        time_f = datetime.datetime.now()
-
-        if self._debug:
-            rospy.loginfo(rospy.get_caller_id() + "Frame processed in %s", time_f - time_i)
-            self._video_writer.write(frame_original)
 
 
 if __name__ == '__main__':

@@ -43,12 +43,12 @@ class FrameHandler(BaseHTTPRequestHandler):
                         return
 
                     last_frame_lock.acquire()
-                    imgRGB = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
+                    frame = last_frame
                     last_frame_lock.release()
 
                     last_frame_event.clear()
 
-                    jpg = PyImage.fromarray(imgRGB)
+                    jpg = PyImage.fromarray(frame)
                     tmpFile = StringIO.StringIO()
                     jpg.save(tmpFile, 'JPEG')
                     self.wfile.write("--jpgboundary")
@@ -75,7 +75,7 @@ class FrameHandler(BaseHTTPRequestHandler):
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    """Handle requests in a separate thread."""
+    pass
 
 
 class DebugNode(object):
@@ -98,6 +98,7 @@ class DebugNode(object):
 
         rospy.Subscriber('regions_of_interest', CategorizedRegionsOfInterest, self._roi_callback)
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
+        # rospy.Subscriber("/pelicannon/image_abs_diff", Image, self._camera_callback)
 
     def _roi_callback(self, rois):
 
