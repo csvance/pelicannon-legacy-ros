@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import math
 from collections import deque
 
 import rospy
@@ -12,8 +13,8 @@ class AHRSNode(object):
     def __init__(self):
         self._ros_init()
 
-        self._euler_que = deque(maxlen=32)
-        self._timestamp_queue = deque(maxlen=32)
+        self._euler_que = deque(maxlen=8)
+        self._timestamp_queue = deque(maxlen=8)
 
     def _ros_init(self):
         rospy.init_node('ahrs')
@@ -27,11 +28,10 @@ class AHRSNode(object):
         self._euler_que.append(euler_from_quaternion([imu.orientation.x,
                                                       imu.orientation.y,
                                                       imu.orientation.z,
-                                                      imu.orientation.w], 'sxyz'))
+                                                      imu.orientation.w]))
         self._timestamp_queue.append(imu.header.stamp.to_sec())
 
-        print("roll(%.2f) pitch(%.2f) yaw(%.2f)" % (
-        self._euler_que[-1][0], self._euler_que[-1][1], self._euler_que[-1][2]))
+        # print("av_pitch(%f) av_roll(%f) av_yaw(%f)" % (self._euler_que[-1][0], self._euler_que[-1][1], self._euler_que[-1][2]))
 
         delta_pitch = 0.
         delta_roll = 0.
@@ -43,11 +43,20 @@ class AHRSNode(object):
         last_yaw = None
         last_time = None
 
+        def angle_diff(t1, t2):
+            if abs(t2 - t1) > math.pi:
+                if t2 > t1:
+                    t1 += 2 * math.pi
+                elif t1 > t2:
+                    t2 += 2 * math.pi
+
+            return t2 - t1
+
         for idx, (roll, pitch, yaw) in enumerate(self._euler_que):
             if last_pitch is not None:
-                delta_roll += roll - last_roll
-                delta_pitch += pitch - last_pitch
-                delta_yaw += yaw - last_yaw
+                delta_roll += angle_diff(roll, last_roll)
+                delta_pitch += angle_diff(pitch, last_pitch)
+                delta_yaw += angle_diff(yaw, last_yaw)
                 delta_time += self._timestamp_queue[idx] - last_time
 
             last_roll = roll
@@ -59,9 +68,9 @@ class AHRSNode(object):
             av_pitch = delta_pitch / delta_time
             av_roll = delta_roll / delta_time
             av_yaw = delta_yaw / delta_time
+
+            print("av_pitch(%f) av_roll(%f) av_yaw(%f)" % (av_pitch, av_roll, av_yaw))
             self._publisher_angular_velocity.publish(Vector3(x=av_roll, y=av_pitch, z=av_yaw))
-        else:
-            print delta_time
 
 
 if __name__ == "__main__":

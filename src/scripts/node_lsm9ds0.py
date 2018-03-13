@@ -10,7 +10,7 @@ class LSM9DS0Node(object):
     def __init__(self):
         self._ros_init()
 
-        self._sensor = LSM9DS0(callback=self._sensor_callback, i2c_bus_num=1, fifo_size=2)
+        self._sensor = LSM9DS0(callback=self._sensor_callback, i2c_bus_num=1, fifo_size=1)
         self._sensor.start()
 
     def _ros_init(self):
