@@ -120,8 +120,9 @@ class MotionTrackerPipeline(object):
 
         self._cv_br = CvBridge()
         self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image, queue_size=10)
+        self._publisher_image_transform = rospy.Publisher('image_transform', Image, queue_size=10)
 
-    def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
+    def process_frame(self, frame, delta_t, yaw_velocity=None, frame_x=10, frame_y=10):
 
         if self.frame_initial is None:
             self.frame_initial = frame
@@ -130,8 +131,11 @@ class MotionTrackerPipeline(object):
         frame_initial = self.frame_initial
         frame_final = frame
 
-        if phi is not None:
-            phi = phi*2
+        if yaw_velocity is not None and delta_t != 0.:
+
+            phi = yaw_velocity * delta_t
+            # print("Phi(%.3f) = YawV(%.3f) DeltaT(%.3f)" % (phi, yaw_velocity, delta_t))
+
             frame_initial_warped = np.reshape(frame_initial.copy(), (frame.shape[0], frame.shape[1], 1))
 
             # Needs to be calibrated more
@@ -140,11 +144,13 @@ class MotionTrackerPipeline(object):
             it = ImageTransformer(frame_initial_warped)
             frame_initial_warped = it.rotate_along_axis(phi=phi, dx=dx)
 
+            self._publisher_image_transform.publish(self._cv_br.cv2_to_imgmsg(frame_initial_warped, encoding="passthrough"))
+
             frame_initial = frame_initial_warped
 
         frame_delta = cv2.absdiff(frame_initial, frame_final)
 
-        if phi is not None:
+        if yaw_velocity is not None:
             frame_delta[0:frame_y, 0:frame_delta.shape[1]] = 0
             frame_delta[frame_delta.shape[0]-frame_y:frame_delta.shape[0], 0:frame_delta.shape[1]] = 0
 
@@ -153,13 +159,7 @@ class MotionTrackerPipeline(object):
 
         self._publisher_image_abs_diff.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
 
-        # pool = skimage.measure.block_reduce(frame_delta, (2, 2), np.average).astype(np.uint8)
-        pool = frame_delta
-
-        pool_scale_x = frame.shape[0] / pool.shape[0]
-        pool_scale_y = frame.shape[1] / pool.shape[1]
-
-        thresh = cv2.threshold(pool, 32, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(frame_delta, 32, 255, cv2.THRESH_BINARY)[1]
 
         # dilate the thresholded image to fill in holes, then find contours
         # on thresholded image
@@ -173,7 +173,7 @@ class MotionTrackerPipeline(object):
             area = cv2.contourArea(c)
             if area < int(self.coeff_min_area*pool.shape[0]*pool.shape[1]) or area > int(self.coeff_max_area*pool.shape[0]*pool.shape[1]):
                 continue
-            rectangles.append(Rectangle(cv2.boundingRect(c), scale=(pool_scale_x, pool_scale_y)))
+            rectangles.append(Rectangle(cv2.boundingRect(c)))
 
         # Store this frame as the next frame initial
         self.frame_initial = frame_final

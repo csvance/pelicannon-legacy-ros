@@ -2,7 +2,8 @@
 
 import math
 import rospy
-from pelicannon.msg import XYZ, AHRS, NineDoF, NineDoFs
+import numpy as np
+from pelicannon.msg import XYZ, AHRS, NineDoF, NineDoFs, AngularVelocity
 
 
 def xyz(t):
@@ -13,15 +14,25 @@ class AHRSNode(object):
     def __init__(self):
         self._ros_init()
 
+        self.last_pitch = None
+        self.last_roll = None
+        self.last_yaw = None
+
+
     def _ros_init(self):
         rospy.init_node('ahrs')
-        self._publisher = rospy.Publisher('euler_angles', AHRS, queue_size=10)
+        self._publisher_ahrs = rospy.Publisher('euler_angles', AHRS, queue_size=10)
+        self._publisher_angular_velocity = rospy.Publisher('angular_velocity', AngularVelocity, queue_size=10)
 
         rospy.Subscriber("ninedofs", NineDoFs, self._ninedof_callback)
 
     def _ninedof_callback(self, ninedofs):
 
-        for ninedof in ninedofs.ninedofs:
+        delta_pitch = 0.
+        delta_roll = 0.
+        delta_yaw = 0.
+
+        for ninedof_index, ninedof in enumerate(ninedofs.ninedofs):
             m = ninedof.magnometer
             a = ninedof.accelerometer
 
@@ -37,10 +48,22 @@ class AHRSNode(object):
                                    m.y * math.sin(pitch) * math.sin(roll) +
                                    m.z * math.sin(pitch) * math.cos(roll))
 
-            # rospy.loginfo(rospy.get_caller_id() + "Pitch %.2f Roll %.2f Yaw %.2f" % (pitch, roll, yaw))
+            self._publisher_ahrs.publish(AHRS(pitch=pitch, roll=roll, yaw=yaw))
 
-            self._publisher.publish(AHRS(pitch=pitch, roll=roll, yaw=yaw)
-)
+            if self.last_pitch is not None:
+                delta_pitch += pitch - self.last_pitch
+                delta_roll += roll - self.last_roll
+                delta_yaw += yaw - self.last_yaw
+
+            self.last_pitch = pitch
+            self.last_roll = roll
+            self.last_yaw = yaw
+
+        av_pitch = delta_pitch / ninedofs.delta_t
+        av_roll = delta_roll / ninedofs.delta_t
+        av_yaw = delta_yaw / ninedofs.delta_t
+
+        self._publisher_angular_velocity.publish(AngularVelocity(pitch=av_pitch, roll=av_roll, yaw=av_yaw))
 
 
 if __name__ == "__main__":

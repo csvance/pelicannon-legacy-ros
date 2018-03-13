@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
-import cv2
-import math
-from tracker import BodyTrackerPipeline, MotionTrackerPipeline
 import datetime
-from threading import Lock
 from cv_bridge import CvBridge
+from threading import Lock
 
+import cv2
 import rospy
+from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest, AHRS, AngularVelocity
 from sensor_msgs.msg import Image
-from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest, AHRS
+
+from tracker import BodyTrackerPipeline, MotionTrackerPipeline
 
 
 class ObjectDetectorNode(object):
@@ -19,8 +19,12 @@ class ObjectDetectorNode(object):
         self._cv_br = CvBridge()
 
         self._ahrs_lock = Lock()
-        self._last_ahrs = None
-        self._current_ahrs = None
+        self._ahrs = None
+
+        self._angular_velocity_lock = Lock()
+        self._angular_velocity = None
+
+        self._last_image = None
 
         self._ros_init()
 
@@ -30,6 +34,7 @@ class ObjectDetectorNode(object):
 
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
         rospy.Subscriber("euler_angles", AHRS, self._ahrs_callback)
+        rospy.Subscriber('angular_velocity', AngularVelocity, self._angular_velocity_callback)
 
     def _initialize_pipelines(self):
         self._body_tracker = BodyTrackerPipeline()
@@ -40,31 +45,20 @@ class ObjectDetectorNode(object):
         else:
             self._video_writer = None
 
-    @staticmethod
-    def angle_diff(theta_i, theta_f):
-        if abs(theta_f - theta_i) <= math.pi:
-            return theta_f - theta_i
-        else:
-            if theta_f > theta_i:
-                theta_f = theta_f - 2 * math.pi
-            elif theta_f < theta_i:
-                theta_i = theta_i - 2 * math.pi
-
-            return theta_f - theta_i
+    def _angular_velocity_callback(self, angular_velocity):
+        self._angular_velocity_lock.acquire()
+        self._angular_velocity = angular_velocity
+        self._angular_velocity_lock.release()
 
     def _ahrs_callback(self, ahrs):
 
         self._ahrs_lock.acquire()
-        if self._current_ahrs is None:
-            self._current_ahrs = ahrs
-        else:
-            self._last_ahrs = self._current_ahrs
-            self._current_ahrs = ahrs
+        self._ahrs = ahrs
         self._ahrs_lock.release()
 
     def _camera_callback(self, image):
 
-        insufficient_data_flag = False
+        delta_t = (image.header.stamp - self._last_image.header.stamp).to_sec() if self._last_image is not None else 0.
 
         time_i = datetime.datetime.now()
 
@@ -79,32 +73,26 @@ class ObjectDetectorNode(object):
         # Does this improve performance? In example code in OpenCV documentation.
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
 
-        self._ahrs_lock.acquire()
-        if self._current_ahrs is None or self._last_ahrs is None:
-            insufficient_data_flag = True
-        else:
-            delta_phi = ObjectDetectorNode.angle_diff(self._current_ahrs.yaw, self._last_ahrs.yaw)
-        self._ahrs_lock.release()
+        # Send data down pipeline and process results
+        haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
+        motion_regions = self._motion_detector.process_frame(frame_grayscale, delta_t,
+                                                             yaw_velocity=self._angular_velocity.yaw if self._angular_velocity is not None else None)
 
-        if not insufficient_data_flag:
-            # Send data down pipeline and process results
-            haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
-            motion_regions = self._motion_detector.process_frame(frame_grayscale, phi=delta_phi if delta_phi >= 0.01 else None)
+        regions = []
+        for rect in haarcascade_regions:
+            regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='body'))
 
-            regions = []
-            for rect in haarcascade_regions:
-                regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='body'))
+        for rect in motion_regions:
+            regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='motion'))
 
-            for rect in motion_regions:
-                regions.append(CategorizedRegionOfInterest(x=rect.x, y=rect.y, w=rect.w, h=rect.h, category='motion'))
+        self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
 
-            self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
+        time_f = datetime.datetime.now()
 
-            time_f = datetime.datetime.now()
+        if self._debug:
+            rospy.loginfo(rospy.get_caller_id() + "Frame processed in %s", time_f - time_i)
 
-            if self._debug:
-                rospy.loginfo(rospy.get_caller_id() + "Frame processed in %s", time_f - time_i)
-
+        self._last_image = image
 
 
 if __name__ == '__main__':

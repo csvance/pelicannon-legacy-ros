@@ -10,7 +10,7 @@ class LSM9DS0Node(object):
     def __init__(self):
         self._ros_init()
 
-        self._sensor = LSM9DS0(callback=self._sensor_callback, i2c_bus_num=1)
+        self._sensor = LSM9DS0(callback=self._sensor_callback, i2c_bus_num=1, fifo_size=8)
         self._sensor.start()
 
     def _ros_init(self):
@@ -28,7 +28,7 @@ class LSM9DS0Node(object):
 
             ninedofs.append(NineDoF(accelerometer=a, magnometer=m, gyrometer=g))
 
-        self._publisher.publish(NineDoFs(ninedofs=ninedofs))
+        self._publisher.publish(NineDoFs(ninedofs=ninedofs, delta_t=len(accelerometer) / 100.))
 
     def shutdown(self):
         self._sensor.shutdown()

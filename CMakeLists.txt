@@ -57,6 +57,7 @@ add_message_files(
   CategorizedRegionOfInterest.msg
   CategorizedRegionsOfInterest.msg
   AHRS.msg
+  AngularVelocity.msg
 )
 
 ## Generate services in the 'srv' folder

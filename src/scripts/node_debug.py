@@ -97,8 +97,8 @@ class DebugNode(object):
         rospy.init_node('debug')
 
         rospy.Subscriber('regions_of_interest', CategorizedRegionsOfInterest, self._roi_callback)
-        rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
-        # rospy.Subscriber("/pelicannon/image_abs_diff", Image, self._camera_callback)
+        # rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
+        rospy.Subscriber("/pelicannon/image_abs_diff", Image, self._camera_callback)
 
     def _roi_callback(self, rois):
 
