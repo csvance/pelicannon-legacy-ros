@@ -35,7 +35,12 @@
     </node>
     <node pkg="pelicannon" type="node_ahrs.py" name="ahrs" output="screen"/>
     <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen"/>
-    <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen"/>
+    <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen">
+        <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, and /webcam/image_raw -->
+        <param name="video_source" value="/pelicannon/image_transform"/>
+        <param name="motion_segments" value="true"/>
+        <param name="body_segments" value="true"/>
+    </node>
   </group>
   <node pkg="imu_filter_madgwick" type="imu_filter_node" name="madgwick" output="screen">
    <param name="use_mag" value="true"/>

@@ -118,17 +118,17 @@ class MotionTrackerPipeline(object):
         self.coeff_max_area = coeff_max_area
 
         self._cv_br = CvBridge()
-        self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image, queue_size=10)
-        self._publisher_image_transform = rospy.Publisher('image_transform', Image, queue_size=10)
+        self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image, queue_size=1)
+        self._publisher_image_transform = rospy.Publisher('image_transform', Image, queue_size=1)
 
     def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
 
         if self.frame_initial is None:
-            self.frame_initial = frame
+            self.frame_initial = cv2.GaussianBlur(frame, (5, 5), 0)
             return []
 
         frame_initial = self.frame_initial
-        frame_final = frame
+        frame_final = cv2.GaussianBlur(frame, (5, 5), 0)
 
         if phi is not None:
             frame_initial_warped = np.reshape(frame_initial.copy(), (frame.shape[0], frame.shape[1], 1))

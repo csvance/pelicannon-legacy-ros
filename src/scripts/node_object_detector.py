@@ -68,9 +68,6 @@ class ObjectDetectorNode(object):
         # Create grayscale versions
         frame_grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Noise reduction
-        frame_grayscale = cv2.GaussianBlur(frame_grayscale, (5, 5), 0)
-
         # Does this improve performance? In example code in OpenCV documentation.
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
 

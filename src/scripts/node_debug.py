@@ -95,10 +95,17 @@ class DebugNode(object):
     def _ros_init(self):
         rospy.init_node('debug')
 
+        rospy.get_param('debug/video_source')
+
         rospy.Subscriber('regions_of_interest', CategorizedRegionsOfInterest, self._roi_callback)
         # rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
         # rospy.Subscriber("/pelicannon/image_abs_diff", Image, self._camera_callback)
         rospy.Subscriber("/pelicannon/image_transform", Image, self._camera_callback)
+
+        rospy.Subscriber(rospy.get_param('debug/video_source'), Image, self._camera_callback)
+
+
+
 
     def _roi_callback(self, rois):
 
@@ -127,10 +134,10 @@ class DebugNode(object):
 
         self._roi_lock.acquire()
         for roi in self._latest_rois:
-            if roi.category == "body":
+            if roi.category == "body" and rospy.get_param('debug/body_segments'):
                 cv2.rectangle(frame, (roi.x, roi.y),
                               (roi.x + roi.w, roi.y + roi.h), (0, 255, 0), 2)
-            elif roi.category == "motion":
+            elif roi.category == "motion" and rospy.get_param('debug/motion_segments'):
                 cv2.rectangle(frame, (roi.x, roi.y),
                               (roi.x + roi.w, roi.y + roi.h), (255, 0, 0), 2)
         self._roi_lock.release()
