@@ -10,7 +10,15 @@ class LSM9DS0Node(object):
     def __init__(self):
         self._ros_init()
 
-        self._sensor = LSM9DS0(callback=self._sensor_callback, i2c_bus_num=1, fifo_size=1)
+        i2c_bus_num = rospy.get_param('lsm9ds0/i2c_bus_num')
+        gpio_int_pin_num = rospy.get_param('lsm9ds0/gpio_int_pin_num')
+
+        g_cal_x = rospy.get_param('lsm9ds0/gyro_cal_x')
+        g_cal_y = rospy.get_param('lsm9ds0/gyro_cal_y')
+        g_cal_z = rospy.get_param('lsm9ds0/gyro_cal_z')
+
+        self._sensor = LSM9DS0(callback=self._sensor_callback, gyro_cal=[g_cal_x, g_cal_y, g_cal_z],
+                               i2c_bus_num=i2c_bus_num, gpio_int_pin_num=gpio_int_pin_num, fifo_size=1)
         self._sensor.start()
 
     def _ros_init(self):

@@ -26,7 +26,13 @@
     </node>
   </group>
   <group ns="pelicannon">
-    <node pkg="pelicannon" type="node_lsm9ds0.py" name="lsm9ds0" output="screen"/>
+    <node pkg="pelicannon" type="node_lsm9ds0.py" name="lsm9ds0" output="screen">
+        <param name="gyro_cal_x" value="-0.405874"/>
+        <param name="gyro_cal_y" value="0.183413"/>
+        <param name="gyro_cal_z" value="-0.891533"/>
+        <param name="gpio_int_pin_num" value="161"/>
+        <param name="i2c_bus_num" value="1"/>
+    </node>
     <node pkg="pelicannon" type="node_ahrs.py" name="ahrs" output="screen"/>
     <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen"/>
     <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen"/>

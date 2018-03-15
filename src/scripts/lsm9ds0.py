@@ -116,10 +116,9 @@ class LSM9DS0(object):
     GYROSCALE_500DPS = 0b01 << 4
     GYROSCALE_2000DPS = 0b10 << 4
 
-    def __init__(self, callback, gpio_interrupt_num=161, i2c_bus_num=0, fifo_size=32,
-                 gyro_cal=[-0.444466, 0.166819, -1.027545]):
+    def __init__(self, callback, gpio_int_pin_num, gyro_cal, i2c_bus_num=0, fifo_size=1):
 
-        self._pin_int_gpio_num = gpio_interrupt_num
+        self._gpio_int_pin_num = gpio_int_pin_num
         self._i2c_bus_num = i2c_bus_num
         self._fifo_size = fifo_size
         self._gyro_cal = gyro_cal
@@ -141,7 +140,7 @@ class LSM9DS0(object):
 
     def _init_hardware(self):
         # Initialize Hardware
-        self._pin_int = GPIO(self._pin_int_gpio_num, 'in', 'rising')
+        self._pin_int = GPIO(self._gpio_int_pin_num, 'in', 'rising')
         self._smbus = SMBus(self._i2c_bus_num)
 
     def _detect_who_am_i(self):
