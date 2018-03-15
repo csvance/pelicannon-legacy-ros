@@ -34,7 +34,6 @@ class ObjectDetectorNode(object):
         self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=10)
 
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
-        rospy.Subscriber("euler_angles", Vector3, self._ahrs_callback)
         rospy.Subscriber('angular_velocity', Vector3, self._angular_velocity_callback)
 
     def _initialize_pipelines(self):
@@ -50,12 +49,6 @@ class ObjectDetectorNode(object):
         self._angular_velocity_lock.acquire()
         self._angular_velocity = angular_velocity
         self._angular_velocity_lock.release()
-
-    def _ahrs_callback(self, ahrs):
-
-        self._ahrs_lock.acquire()
-        self._ahrs = ahrs
-        self._ahrs_lock.release()
 
     def _camera_callback(self, image):
 

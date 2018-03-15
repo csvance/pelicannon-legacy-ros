@@ -9,7 +9,7 @@ from sensor_msgs.msg import Imu
 from tf.transformations import euler_from_quaternion
 
 
-class AHRSNode(object):
+class VelocityNode(object):
     def __init__(self):
         self._ros_init()
 
@@ -17,8 +17,7 @@ class AHRSNode(object):
         self._timestamp_queue = deque(maxlen=8)
 
     def _ros_init(self):
-        rospy.init_node('ahrs')
-        self._publisher_ahrs = rospy.Publisher('euler_angles', Vector3, queue_size=10)
+        rospy.init_node('velocity')
         self._publisher_angular_velocity = rospy.Publisher('angular_velocity', Vector3, queue_size=10)
 
         rospy.Subscriber("/imu/data", Imu, self._imu_callback)
@@ -71,5 +70,5 @@ class AHRSNode(object):
 
 
 if __name__ == "__main__":
-    node = AHRSNode()
+    node = VelocityNode()
     rospy.spin()

@@ -33,7 +33,7 @@
         <param name="gpio_int_pin_num" value="161"/>
         <param name="i2c_bus_num" value="1"/>
     </node>
-    <node pkg="pelicannon" type="node_ahrs.py" name="ahrs" output="screen"/>
+    <node pkg="pelicannon" type="node_velocity.py" name="velocity" output="screen"/>
     <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen"/>
     <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen">
         <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, and /webcam/image_raw -->
