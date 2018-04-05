@@ -167,6 +167,7 @@ include_directories(
 install(PROGRAMS
   scripts/node_object_detector.py
   scripts/node_lsm9ds0.py
+  scripts/node_k66f.py
   scripts/node_velocity.py
   scripts/node_debug.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
