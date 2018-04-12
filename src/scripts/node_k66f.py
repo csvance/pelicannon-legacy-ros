@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 
 import struct
+from threading import Lock
 
 import numpy as np
 import rospy
 import serial
 from sensor_msgs.msg import Imu, MagneticField
+from std_msgs.msg import Int16
 
 
 class K66FNode(object):
     def __init__(self):
         self._ros_init()
 
-        tty = rospy.get_param('k66f/tty')
-        self._ser = serial.Serial(tty, int(rospy.get_param('k66f/baud')))
+        self._ser = serial.Serial(rospy.get_param('k66f/tty'), int(rospy.get_param('k66f/baud')))
+        self._ser_lock = Lock()
         self._gyro_cal = {'x': rospy.get_param('k66f/gyro_cal_x'),
                           'y': rospy.get_param('k66f/gyro_cal_y'),
                           'z': rospy.get_param('k66f/gyro_cal_z')}
@@ -23,10 +25,23 @@ class K66FNode(object):
         self._publisher_imu = rospy.Publisher('/imu/data_raw', Imu, queue_size=10)
         self._publisher_magnetic = rospy.Publisher('/imu/mag', MagneticField, queue_size=10)
 
+        rospy.Subscriber("/motor/direction", Int16, self._motor_callback)
+
+    def _motor_callback(self, steps):
+        self._ser_lock.acquire()
+
+        if steps == 0:
+            self._ser.write('A;')
+        else:
+            self._ser.write('S:%d;' % steps)
+
+        self._ser_lock.release()
+
     def _synchronize(self):
         rospy.loginfo(rospy.get_caller_id() + " Resynchronizing stream...")
 
-        b = 0
+        self._ser_lock.acquire()
+
         while True:
 
             b1 = self._ser.read(1)
@@ -44,6 +59,8 @@ class K66FNode(object):
 
             self._ser.read(18)
             break
+
+        self._ser_lock.release()
 
     def _calibrate(self, samples=4096):
         rospy.loginfo(rospy.get_caller_id() + " Running calibration...")
@@ -71,7 +88,10 @@ class K66FNode(object):
         self._gyro_cal['z'] = z
 
     def _read(self):
+        self._ser_lock.acquire()
         data = self._ser.read(22)
+        self._ser_lock.release()
+
         ts = rospy.get_time()
 
         if data[0] != "\xDE" or data[1] != "\xAD" or data[2] != "\xBE" or data[3] != "\xEF":
