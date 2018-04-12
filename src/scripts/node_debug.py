@@ -95,17 +95,8 @@ class DebugNode(object):
     def _ros_init(self):
         rospy.init_node('debug')
 
-        rospy.get_param('debug/video_source')
-
         rospy.Subscriber('regions_of_interest', CategorizedRegionsOfInterest, self._roi_callback)
-        # rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
-        # rospy.Subscriber("/pelicannon/image_abs_diff", Image, self._camera_callback)
-        rospy.Subscriber("/pelicannon/image_transform", Image, self._camera_callback)
-
         rospy.Subscriber(rospy.get_param('debug/video_source'), Image, self._camera_callback)
-
-
-
 
     def _roi_callback(self, rois):
 

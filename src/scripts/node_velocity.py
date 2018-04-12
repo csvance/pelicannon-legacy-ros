@@ -30,10 +30,10 @@ class VelocityNode(object):
                                                       imu.orientation.w]))
         self._timestamp_queue.append(imu.header.stamp.to_sec())
 
-        delta_pitch = 0.
-        delta_roll = 0.
-        delta_yaw = 0.
-        delta_time = 0.
+        d_pitch = 0.
+        d_roll = 0.
+        d_yaw = 0.
+        d_time = 0.
 
         last_pitch = None
         last_roll = None
@@ -51,20 +51,20 @@ class VelocityNode(object):
 
         for idx, (roll, pitch, yaw) in enumerate(self._euler_que):
             if last_pitch is not None:
-                delta_roll += angle_diff(roll, last_roll)
-                delta_pitch += angle_diff(pitch, last_pitch)
-                delta_yaw += angle_diff(yaw, last_yaw)
-                delta_time += self._timestamp_queue[idx] - last_time
+                d_roll += angle_diff(roll, last_roll)
+                d_pitch += angle_diff(pitch, last_pitch)
+                d_yaw += angle_diff(yaw, last_yaw)
+                d_time += self._timestamp_queue[idx] - last_time
 
             last_roll = roll
             last_pitch = pitch
             last_yaw = yaw
             last_time = self._timestamp_queue[idx]
 
-        if delta_time > 0.:
-            av_pitch = delta_pitch / delta_time
-            av_roll = delta_roll / delta_time
-            av_yaw = delta_yaw / delta_time
+        if d_time > 0.:
+            av_pitch = d_pitch / d_time
+            av_roll = d_roll / d_time
+            av_yaw = d_yaw / d_time
 
             self._publisher_angular_velocity.publish(Vector3(x=av_roll, y=av_pitch, z=av_yaw))
 

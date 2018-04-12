@@ -67,7 +67,8 @@ class ObjectDetectorNode(object):
         # Send data down pipeline and process results
         haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
         motion_regions = self._motion_detector.process_frame(frame_grayscale,
-                                                             phi=self._angular_velocity.z * delta_t if self._angular_velocity is not None else None)
+                                                             phi=self._angular_velocity.z * delta_t
+                                                             if self._angular_velocity is not None else None)
 
         regions = []
         for region in haarcascade_regions:
