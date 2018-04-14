@@ -6,9 +6,8 @@ from threading import Lock
 
 import cv2
 import rospy
-from geometry_msgs.msg import Vector3
 from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, Imu
 
 from tracker import BodyTrackerPipeline, MotionTrackerPipeline
 
@@ -34,7 +33,8 @@ class ObjectDetectorNode(object):
         self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=10)
 
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
-        rospy.Subscriber('angular_velocity', Vector3, self._angular_velocity_callback)
+        rospy.Subscriber("/imu/data", Imu, self._imu_callback)
+
 
     def _initialize_pipelines(self):
         self._body_tracker = BodyTrackerPipeline()
@@ -45,9 +45,9 @@ class ObjectDetectorNode(object):
         else:
             self._video_writer = None
 
-    def _angular_velocity_callback(self, angular_velocity):
+    def _imu_callback(self, imu):
         self._angular_velocity_lock.acquire()
-        self._angular_velocity = angular_velocity
+        self._angular_velocity = imu.angular_velocity
         self._angular_velocity_lock.release()
 
     def _camera_callback(self, image):
