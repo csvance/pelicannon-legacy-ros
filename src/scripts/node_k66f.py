@@ -112,9 +112,9 @@ class K66FNode(object):
         imu.angular_velocity.z = struct.unpack("h", data[8:10])[0] * np.pi / 180.
 
         # Apply Calibration
-        imu.angular_velocity.x += self._gyro_cal['x']
-        imu.angular_velocity.y += self._gyro_cal['y']
-        imu.angular_velocity.z += self._gyro_cal['z']
+        imu.angular_velocity.x -= self._gyro_cal['x']
+        imu.angular_velocity.y -= self._gyro_cal['y']
+        imu.angular_velocity.z -= self._gyro_cal['z']
 
         imu.angular_velocity_covariance[0] = -1.
 
