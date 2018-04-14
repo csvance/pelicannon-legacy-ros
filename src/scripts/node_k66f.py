@@ -130,6 +130,8 @@ class K66FNode(object):
         return imu, magnetic
 
     def run(self):
+        self._synchronize()
+
         if rospy.get_param('k66f/run_calibration'):
             self._calibrate()
 
@@ -139,8 +141,11 @@ class K66FNode(object):
             if t is False:
                 self._synchronize()
             # Unpack
-            imu, magnetic = t
-
+            try:
+                imu, magnetic = t
+            except TypeError:
+                self._synchronize()
+                continue
             self._publisher_imu.publish(imu)
             self._publisher_magnetic.publish(magnetic)
 
