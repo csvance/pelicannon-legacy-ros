@@ -18,11 +18,11 @@
       <param name="timestamp_method" value="start"/> <!-- start of frame -->
       <param name="camera_info_url" value="file:///tmp/cam.yaml"/>
 
-      <param name="auto_exposure" value="1"/>
+      <param name="auto_exposure" value="0"/>
       <param name="exposure_absolute" value="0.001"/>
 
-      <param name="auto_white_balance" value="true"/>
-      <param name="auto_focus" value="true" />
+      <param name="auto_white_balance" value="false"/>
+      <param name="auto_focus" value="false" />
     </node>
   </group>
   <group ns="pelicannon">
@@ -34,13 +34,12 @@
         <param name="tty" value="/dev/ttyTHS1"/>
         <param name="baud" value="115200"/>
     </node>
-    <node pkg="pelicannon" type="node_velocity.py" name="velocity" output="screen"/>
     <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen"/>
     <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen">
         <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, and /webcam/image_raw -->
         <param name="video_source" value="/pelicannon/image_abs_diff"/>
-        <param name="motion_segments" value="false"/>
-        <param name="body_segments" value="false"/>
+        <param name="motion_segments" value="true"/>
+        <param name="body_segments" value="true"/>
     </node>
   </group>
   <node pkg="imu_filter_madgwick" type="imu_filter_node" name="madgwick" output="screen">
