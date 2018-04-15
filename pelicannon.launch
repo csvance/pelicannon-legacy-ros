@@ -28,9 +28,9 @@
   <group ns="pelicannon">
     <node pkg="pelicannon" type="node_k66f.py" name="k66f" output="screen">
         <param name="run_calibration" value="false"/>
-        <param name="gyro_cal_x" value="0.192570"/>
-        <param name="gyro_cal_y" value="-0.326380"/>
-        <param name="gyro_cal_z" value="0.018821"/>
+        <param name="gyro_cal_x" value="-0.192570"/>
+        <param name="gyro_cal_y" value="0.326380"/>
+        <param name="gyro_cal_z" value="-0.018821"/>
         <param name="tty" value="/dev/ttyTHS1"/>
         <param name="baud" value="115200"/>
     </node>

@@ -81,7 +81,7 @@ class K66FNode(object):
             data[i][2] = imu.angular_velocity.z
 
         x, y, z = np.average(data[:, 0]), np.average(data[:, 1]), np.average(data[:, 2])
-        print("Gyro Calibration Complete - X: %f Y: %f Z: %f" % (x, y, z))
+        print("Gyro Calibration Complete - X: %f Y: %f Z: %f" % (-x, -y, -z))
 
         self._gyro_cal['x'] = x
         self._gyro_cal['y'] = y
@@ -112,9 +112,9 @@ class K66FNode(object):
         imu.angular_velocity.z = struct.unpack("h", data[8:10])[0] * np.pi / 180.
 
         # Apply Calibration
-        imu.angular_velocity.x -= self._gyro_cal['x']
-        imu.angular_velocity.y -= self._gyro_cal['y']
-        imu.angular_velocity.z -= self._gyro_cal['z']
+        imu.angular_velocity.x += self._gyro_cal['x']
+        imu.angular_velocity.y += self._gyro_cal['y']
+        imu.angular_velocity.z += self._gyro_cal['z']
 
         imu.angular_velocity_covariance[0] = -1.
 
