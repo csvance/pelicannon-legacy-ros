@@ -146,39 +146,6 @@ class K66FNode(object):
             except TypeError:
                 self._synchronize()
                 continue
-            self._publisher_imu.publish(imu)
-            self._publisher_magnetic.publish(magnetic)
-
-    def _sensor_callback(self, accelerometer, magnometer, gyrometer):
-        end_ts = rospy.get_time()
-
-        for i in range(0, len(accelerometer)):
-            imu = Imu()
-            magnetic = MagneticField()
-
-            # Calculate timestamp for reading
-            samples_behind = (len(accelerometer) - 1) - i
-            samples_per_sec = len(accelerometer) / 50.
-            stamp = rospy.Time.from_sec(end_ts - samples_behind * samples_per_sec)
-
-            imu.header.stamp = stamp
-            magnetic.header.stamp = stamp
-
-            imu.orientation_covariance[0] = -1.
-
-            imu.linear_acceleration.x = accelerometer[i][0]
-            imu.linear_acceleration.y = accelerometer[i][1]
-            imu.linear_acceleration.z = accelerometer[i][2]
-            imu.linear_acceleration_covariance[0] = -1.
-
-            imu.angular_velocity.x = gyrometer[i][0]
-            imu.angular_velocity.y = gyrometer[i][1]
-            imu.angular_velocity.z = gyrometer[i][2]
-            imu.angular_velocity_covariance[0] = -1.
-
-            magnetic.magnetic_field.x = magnometer[i][0]
-            magnetic.magnetic_field.y = magnometer[i][1]
-            magnetic.magnetic_field.z = magnometer[i][2]
 
             self._publisher_imu.publish(imu)
             self._publisher_magnetic.publish(magnetic)

@@ -35,10 +35,11 @@ class ObjectDetectorNode(object):
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
         rospy.Subscriber("/imu/data", Imu, self._imu_callback)
 
-
     def _initialize_pipelines(self):
-        self._body_tracker = BodyTrackerPipeline()
-        self._motion_detector = MotionTrackerPipeline()
+        if rospy.get_param('object_detector/body_regions'):
+            self._body_tracker = BodyTrackerPipeline()
+        if rospy.get_param('object_detector/motion_regions'):
+            self._motion_detector = MotionTrackerPipeline()
 
         if self._debug:
             self._video_writer = cv2.VideoWriter('output.avi', cv2.cv.FOURCC('M', 'J', 'P', 'G'), 30.0, (160, 90))
@@ -65,18 +66,21 @@ class ObjectDetectorNode(object):
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
 
         # Send data down pipeline and process results
-        haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
-        motion_regions = self._motion_detector.process_frame(frame_grayscale,
-                                                             phi=self._angular_velocity.z * delta_t
-                                                             if self._angular_velocity is not None else None)
-
         regions = []
-        for region in haarcascade_regions:
-            regions.append(CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='body'))
 
-        for region in motion_regions:
-            regions.append(
-                CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='motion'))
+        if rospy.get_param('object_detector/motion_regions'):
+            motion_regions = self._motion_detector.process_frame(frame_grayscale,
+                                                                 phi=self._angular_velocity.z * delta_t
+                                                                 if self._angular_velocity is not None else None)
+            for region in motion_regions:
+                regions.append(
+                    CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='motion'))
+
+        if rospy.get_param('object_detector/body_regions'):
+            haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
+            for region in haarcascade_regions:
+                regions.append(
+                    CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='body'))
 
         self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
 

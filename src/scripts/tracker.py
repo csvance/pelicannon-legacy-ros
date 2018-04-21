@@ -118,8 +118,7 @@ class MotionTrackerPipeline(object):
         self.coeff_max_area = coeff_max_area
 
         self._cv_br = CvBridge()
-        self._publisher_image_abs_diff = rospy.Publisher('image_abs_diff', Image, queue_size=1)
-        self._publisher_image_transform = rospy.Publisher('image_transform', Image, queue_size=1)
+        self._publisher_image_debug = rospy.Publisher('cv_peek', Image, queue_size=1)
 
     def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
 
@@ -139,8 +138,9 @@ class MotionTrackerPipeline(object):
             it = ImageTransformer(frame_initial_warped)
             frame_initial_warped = it.rotate_along_axis(phi=phi, dx=dx)
 
-            self._publisher_image_transform.publish(
-                self._cv_br.cv2_to_imgmsg(frame_initial_warped, encoding="passthrough"))
+            if rospy.get_param('debug/video_source') == '/pelicannon/image_transform':
+                self._publisher_image_debug.publish(
+                    self._cv_br.cv2_to_imgmsg(frame_initial_warped, encoding="passthrough"))
 
             frame_initial = frame_initial_warped
 
@@ -153,7 +153,8 @@ class MotionTrackerPipeline(object):
             frame_delta[0:frame_delta.shape[0], 0:frame_x] = 0
             frame_delta[0:frame_delta.shape[0], frame_delta.shape[1] - frame_x:frame_delta.shape[1]] = 0
 
-        self._publisher_image_abs_diff.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
+        if rospy.get_param('debug/video_source') == '/pelicannon/image_abs_diff':
+            self._publisher_image_debug.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
 
         thresh = cv2.threshold(frame_delta, 32, 255, cv2.THRESH_BINARY)[1]
 
