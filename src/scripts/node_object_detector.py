@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
 import datetime
+from collections import deque
 from cv_bridge import CvBridge
 from threading import Lock
 
 import cv2
 import rospy
-from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest
+from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest, AngleDeltaImage
 from sensor_msgs.msg import Image, Imu
 
 from tracker import BodyTrackerPipeline, MotionTrackerPipeline
@@ -21,8 +22,8 @@ class ObjectDetectorNode(object):
         self._ahrs_lock = Lock()
         self._ahrs = None
 
-        self._angular_velocity_lock = Lock()
-        self._angular_velocity = None
+        self._imu_lock = Lock()
+        self._imu_queue = deque(maxlen=3)
 
         self._last_image = None
 
@@ -31,6 +32,9 @@ class ObjectDetectorNode(object):
     def _ros_init(self):
         rospy.init_node('object_detector')
         self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=10)
+
+        if rospy.get_param('object_detector/debug'):
+            self._angle_delta_image_publisher = rospy.Publisher('angle_delta_image', AngleDeltaImage, queue_size=100)
 
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
         rospy.Subscriber("/imu/data", Imu, self._imu_callback)
@@ -41,15 +45,30 @@ class ObjectDetectorNode(object):
         if rospy.get_param('object_detector/motion_regions'):
             self._motion_detector = MotionTrackerPipeline()
 
-        if self._debug:
-            self._video_writer = cv2.VideoWriter('output.avi', cv2.cv.FOURCC('M', 'J', 'P', 'G'), 30.0, (160, 90))
-        else:
-            self._video_writer = None
-
     def _imu_callback(self, imu):
-        self._angular_velocity_lock.acquire()
-        self._angular_velocity = imu.angular_velocity
-        self._angular_velocity_lock.release()
+        self._imu_lock.acquire()
+        self._imu_queue.append(imu)
+        self._imu_lock.release()
+
+    def _compute_angular_velocity(self):
+        a_x = 0.
+        a_y = 0.
+        a_z = 0.
+
+        self._imu_lock.acquire()
+
+        for i in self._imu_queue:
+            a_x += i.angular_velocity.x
+            a_y += i.angular_velocity.y
+            a_z += i.angular_velocity.z
+
+        a_x /= len(self._imu_queue)
+        a_y /= len(self._imu_queue)
+        a_z /= len(self._imu_queue)
+
+        self._imu_lock.release()
+
+        return a_x, a_y, a_z
 
     def _camera_callback(self, image):
 
@@ -65,13 +84,23 @@ class ObjectDetectorNode(object):
         # Does this improve performance? In example code in OpenCV documentation.
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
 
+        if rospy.get_param('object_detector/debug'):
+            self._imu_lock.acquire()
+            last_imu = [i for i in self._imu_queue]
+            self._imu_lock.release()
+
+            adi = AngleDeltaImage(image, self._last_image, last_imu)
+            self._angle_delta_image_publisher.publish(adi)
+
+        av_x, av_y, av_z = self._compute_angular_velocity()
+
         # Send data down pipeline and process results
         regions = []
 
         if rospy.get_param('object_detector/motion_regions'):
             motion_regions = self._motion_detector.process_frame(frame_grayscale,
-                                                                 phi=self._angular_velocity.z * delta_t
-                                                                 if self._angular_velocity is not None else None)
+                                                                 phi=av_z * delta_t
+                                                                 if len(self._imu_queue) != 0 else None)
             for region in motion_regions:
                 regions.append(
                     CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='motion'))

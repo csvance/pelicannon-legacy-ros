@@ -37,10 +37,13 @@
         <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen">
             <param name="motion_regions" value="true"/>
             <param name="body_regions" value="false"/>
+            <param name="debug" value="true"/>
         </node>
         <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen">
             <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, and /webcam/image_raw -->
-            <param name="video_source" value="/pelicannon/image_transform"/>
+            <param name="video_source" value="/pelicannon/image_abs_diff"/>
+            <param name="adi_dump_dir" value="/home/ubuntu/ml"/>
+            <param name="adi_min_rad_velocity" value="1.0"/>
         </node>
         <node pkg="pelicannon" type="node_base.py" name="base" output="screen">
             <param name="camera_height" value="1.0"/>
