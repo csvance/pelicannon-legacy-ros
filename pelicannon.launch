@@ -28,22 +28,22 @@
     <group ns="pelicannon">
         <node pkg="pelicannon" type="node_k66f.py" name="k66f" output="screen">
             <param name="run_calibration" value="false"/>
-            <param name="gyro_cal_x" value="-0.192570"/>
-            <param name="gyro_cal_y" value="0.326380"/>
-            <param name="gyro_cal_z" value="-0.018821"/>
+            <param name="gyro_cal_x" value="-0.011587"/>
+            <param name="gyro_cal_y" value="0.019745"/>
+            <param name="gyro_cal_z" value="0.002371"/>
             <param name="tty" value="/dev/ttyTHS1"/>
             <param name="baud" value="115200"/>
         </node>
         <node pkg="pelicannon" type="node_object_detector.py" name="object_detector" output="screen">
             <param name="motion_regions" value="true"/>
-            <param name="body_regions" value="false"/>
+            <param name="body_regions" value="true"/>
             <param name="debug" value="true"/>
         </node>
         <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen">
-            <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, and /webcam/image_raw -->
+            <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, /pelicannon/image_thresh, and /webcam/image_raw -->
             <param name="video_source" value="/pelicannon/image_abs_diff"/>
             <param name="adi_dump_dir" value="/home/ubuntu/ml"/>
-            <param name="adi_min_rad_velocity" value="1.0"/>
+            <param name="adi_min_rad_velocity" value="100.0"/>
         </node>
         <node pkg="pelicannon" type="node_base.py" name="base" output="screen">
             <param name="camera_height" value="1.0"/>
@@ -54,7 +54,7 @@
         <param name="use_magnetic_field_msg" value="true"/>
         <param name="stateless" value="false"/>
         <param name="constant_dt" value="0.0"/>
-        <param name="gain" value="0.1"/>
+        <param name="gain" value="0.5"/>
     </node>
 
 </launch>

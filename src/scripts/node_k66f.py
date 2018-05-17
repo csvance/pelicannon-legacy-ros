@@ -7,7 +7,7 @@ import numpy as np
 import rospy
 import serial
 from sensor_msgs.msg import Imu, MagneticField
-from std_msgs.msg import Int16
+from std_msgs.msg import Float32
 
 
 class K66FNode(object):
@@ -25,14 +25,17 @@ class K66FNode(object):
         self._publisher_imu = rospy.Publisher('/imu/data_raw', Imu, queue_size=10)
         self._publisher_magnetic = rospy.Publisher('/imu/mag', MagneticField, queue_size=10)
 
-        rospy.Subscriber("/motor/direction", Int16, self._motor_callback)
+        rospy.Subscriber("/motor/move_angle", Float32, self._motor_callback)
 
-    def _motor_callback(self, steps):
+    def _motor_callback(self, angle):
         self._ser_lock.acquire()
 
-        if steps == 0:
+        angle = angle.data
+
+        if angle == 0.:
             self._ser.write('A;')
         else:
+            steps = int(angle / np.pi * 100)
             self._ser.write('S:%d;' % steps)
 
         self._ser_lock.release()
@@ -107,9 +110,9 @@ class K66FNode(object):
 
         imu.orientation_covariance[0] = -1.
 
-        imu.angular_velocity.x = struct.unpack("h", data[4:6])[0] * np.pi / 180.
-        imu.angular_velocity.y = struct.unpack("h", data[6:8])[0] * np.pi / 180.
-        imu.angular_velocity.z = struct.unpack("h", data[8:10])[0] * np.pi / 180.
+        imu.angular_velocity.x = struct.unpack("h", data[4:6])[0] * 2000./32768. * np.pi / 180.
+        imu.angular_velocity.y = struct.unpack("h", data[6:8])[0] * 2000./32768. * np.pi / 180.
+        imu.angular_velocity.z = struct.unpack("h", data[8:10])[0] * 2000./32768. * np.pi / 180.
 
         # Apply Calibration
         imu.angular_velocity.x += self._gyro_cal['x']

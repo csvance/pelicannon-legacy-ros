@@ -112,7 +112,7 @@ class BodyTrackerPipeline(object):
 
 
 class MotionTrackerPipeline(object):
-    def __init__(self, coeff_min_area=0.025, coeff_max_area=1.0):
+    def __init__(self, coeff_min_area=0.025, coeff_max_area=0.5):
         self.frame_initial = None
         self.coeff_min_area = coeff_min_area
         self.coeff_max_area = coeff_max_area
@@ -120,20 +120,25 @@ class MotionTrackerPipeline(object):
         self._cv_br = CvBridge()
         self._publisher_image_debug = rospy.Publisher('cv_peek', Image, queue_size=1)
 
-    def process_frame(self, frame, phi=None, frame_x=10, frame_y=10):
+    def process_frame(self, frame, phi=None, blur=True):
 
         if self.frame_initial is None:
-            self.frame_initial = cv2.GaussianBlur(frame, (5, 5), 0)
+            if blur:
+                self.frame_initial = cv2.GaussianBlur(frame, (5, 5), 0)
+            else:
+                self.frame_initial = frame
             return []
 
         frame_initial = self.frame_initial
-        frame_final = cv2.GaussianBlur(frame, (5, 5), 0)
+        if blur:
+            frame_final = cv2.GaussianBlur(frame, (5, 5), 0)
+        else:
+            frame_final = frame
 
         if phi is not None:
             frame_initial_warped = np.reshape(frame_initial.copy(), (frame.shape[0], frame.shape[1], 1))
 
-            # Needs to be calibrated more
-            dx = int(-2. / 15. * phi * 180. / math.pi)
+            dx = 2.646771 * (180. / np.pi) * phi
 
             it = ImageTransformer(frame_initial_warped)
             frame_initial_warped = it.rotate_along_axis(phi=phi, dx=dx)
@@ -144,9 +149,18 @@ class MotionTrackerPipeline(object):
 
             frame_initial = frame_initial_warped
 
+        else:
+            if rospy.get_param('debug/video_source') == '/pelicannon/image_transform':
+                self._publisher_image_debug.publish(
+                    self._cv_br.cv2_to_imgmsg(frame_initial, encoding="passthrough"))
+
         frame_delta = cv2.absdiff(frame_initial, frame_final)
 
         if phi is not None:
+
+            frame_x = abs(int(dx*2))
+            frame_y = abs(int(dx))
+
             frame_delta[0:frame_y, 0:frame_delta.shape[1]] = 0
             frame_delta[frame_delta.shape[0] - frame_y:frame_delta.shape[0], 0:frame_delta.shape[1]] = 0
 
@@ -156,11 +170,17 @@ class MotionTrackerPipeline(object):
         if rospy.get_param('debug/video_source') == '/pelicannon/image_abs_diff':
             self._publisher_image_debug.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
 
-        thresh = cv2.threshold(frame_delta, 32, 255, cv2.THRESH_BINARY)[1]
+        if phi is None:
+            thresh = cv2.threshold(frame_delta, 32, 255, cv2.THRESH_BINARY)[1]
+        else:
+            thresh = cv2.threshold(frame_delta, 160, 255, cv2.THRESH_BINARY)[1]
 
         # dilate the thresholded image to fill in holes, then find contours
         # on thresholded image
         thresh = cv2.dilate(thresh, None, iterations=3)
+
+        if rospy.get_param('debug/video_source') == '/pelicannon/image_thresh':
+            self._publisher_image_debug.publish(self._cv_br.cv2_to_imgmsg(thresh, encoding="passthrough"))
 
         (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                      cv2.CHAIN_APPROX_SIMPLE)
@@ -175,4 +195,7 @@ class MotionTrackerPipeline(object):
 
         # Store this frame as the next frame initial
         self.frame_initial = frame_final
+
+        #if phi <= 0.005:
         return rectangles
+        return []
