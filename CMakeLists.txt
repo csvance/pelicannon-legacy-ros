@@ -52,7 +52,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  AngleDeltaImage.msg
   CategorizedRegionOfInterest.msg
   CategorizedRegionsOfInterest.msg
 )
@@ -167,7 +166,6 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
   scripts/node_object_detector.py
-  scripts/node_lsm9ds0.py
   scripts/node_k66f.py
   scripts/node_velocity.py
   scripts/node_debug.py

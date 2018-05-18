@@ -19,10 +19,10 @@
             <param name="camera_info_url" value="file:///tmp/cam.yaml"/>
 
             <param name="auto_exposure" value="0"/>
-            <param name="exposure_absolute" value="0.001"/>
+            <!-- <param name="exposure_absolute" value="0.001"/> -->
 
             <param name="auto_white_balance" value="false"/>
-            <param name="auto_focus" value="false"/>
+            <param name="auto_focus" value="true"/>
         </node>
     </group>
     <group ns="pelicannon">
@@ -41,9 +41,7 @@
         </node>
         <node pkg="pelicannon" type="node_debug.py" name="debug" output="screen">
             <!-- Options include /pelicannon/image_transform, /pelicannon/image_abs_diff, /pelicannon/image_thresh, and /webcam/image_raw -->
-            <param name="video_source" value="/pelicannon/image_abs_diff"/>
-            <param name="adi_dump_dir" value="/home/ubuntu/ml"/>
-            <param name="adi_min_rad_velocity" value="100.0"/>
+            <param name="video_source" value="/pelicannon/image_raw"/>
         </node>
         <node pkg="pelicannon" type="node_base.py" name="base" output="screen">
             <param name="camera_height" value="1.0"/>

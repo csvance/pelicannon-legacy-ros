@@ -40,7 +40,7 @@ class BaseNode(object):
                                             imu.orientation.w),
                                            imu.header.stamp,
                                            "webcam", "base")
-        self._tf_broadcaster.sendTransform((0., 0., 0.), (0., 0., 0., 1.), imu.header.stamp,
+        self._tf_broadcaster.sendTransform((0., 0., -0.1), (0., 0., 0., 1.), imu.header.stamp,
                                            "nerf", "webcam")
 
         imu.header.frame_id = "webcam"

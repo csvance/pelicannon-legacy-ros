@@ -36,6 +36,7 @@ class K66FNode(object):
             self._ser.write('A;')
         else:
             steps = int(angle / np.pi * 100)
+            print("Steps: %d" % steps)
             self._ser.write('S:%d;' % steps)
 
         self._ser_lock.release()

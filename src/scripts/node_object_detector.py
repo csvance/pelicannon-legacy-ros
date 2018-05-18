@@ -8,12 +8,119 @@ from threading import Lock
 import cv2
 import numpy as np
 import rospy
-from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest, AngleDeltaImage
+from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest
 from sensor_msgs.msg import Image, Imu
 from std_msgs.msg import Float32
-
 from tracker import BodyTrackerPipeline, MotionTrackerPipeline
 
+
+class Rectangle(object):
+    def __init__(self, rect_tuple, scale=(1., 1.)):
+        x, y, w, h = rect_tuple
+        self.x = int(x * scale[0])
+        self.y = int(y * scale[1])
+        self.w = int(w * scale[0])
+        self.h = int(h * scale[1])
+
+    def scale(self, scale_x, scale_y):
+        x = int(scale_x * self.x)
+        w = int(scale_x * self.x)
+        y = int(scale_y * self.y)
+        h = int(scale_y * self.h)
+        return Rectangle((x, y, w, h))
+
+    def __repr__(self):
+        return "x: %d w: %d y: %d h: %d" % (self.x, self.w, self.y, self.h)
+
+
+class BodyTrackerPipeline(object):
+    def __init__(self, min_x=0, min_y=0):
+        self._cv_br = CvBridge()
+
+        self._publisher_image_debug = rospy.Publisher('cv_peek', Image, queue_size=1)
+
+        self._hog = cv2.HOGDescriptor()
+        self._hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
+        self._min_x = min_x
+        self._min_y = min_y
+
+    def process_frame(self, frame):
+        # Workaround scale invariance issue in OpenCV HOG-SVM by vertical padding
+        combined = np.pad(frame.copy(), ((0, frame.shape[0]),
+                                         (0, 0), (0, 0)),
+                          mode='constant', constant_values=0)
+
+        rectangles = []
+        rects, weights = self._hog.detectMultiScale(combined, scale=1.05)
+        for (x, y, w, h) in rects:
+            h /= 2
+            rectangles.append(Rectangle((x, y, w, h)))
+
+        return rectangles
+
+
+class MotionTrackerPipeline(object):
+    def __init__(self, coeff_min_area=0.025, coeff_max_area=0.75, in_motion=False):
+        self.frame_initial = None
+        self.coeff_min_area = coeff_min_area
+        self.coeff_max_area = coeff_max_area
+
+        self._phi_history = deque(maxlen=8)
+
+        self._cv_br = CvBridge()
+        self._publisher_image_debug = rospy.Publisher('cv_peek', Image, queue_size=1)
+
+    def process_frame(self, frame, phi=None, blur=True):
+
+        self._phi_history.append(phi if phi is not None else 0.0)
+
+        if self.frame_initial is None:
+            if blur:
+                self.frame_initial = cv2.GaussianBlur(frame, (5, 5), 0)
+            else:
+                self.frame_initial = frame
+            return []
+
+        frame_initial = self.frame_initial
+        if blur:
+            frame_final = cv2.GaussianBlur(frame, (5, 5), 0)
+        else:
+            frame_final = frame
+
+        matrix_hist = np.array(self._phi_history)
+        if np.max(np.abs(matrix_hist)) > 0.01:
+            return []
+
+        frame_delta = cv2.absdiff(frame_initial, frame_final)
+
+        if rospy.get_param('debug/video_source') == '/pelicannon/image_abs_diff':
+            self._publisher_image_debug.publish(self._cv_br.cv2_to_imgmsg(frame_delta, encoding="passthrough"))
+
+        thresh = cv2.threshold(frame_delta, 24, 255, cv2.THRESH_BINARY)[1]
+
+        # dilate the thresholded image to fill in holes, then find contours
+        # on thresholded image
+        thresh = cv2.dilate(thresh, None, iterations=3)
+
+        if rospy.get_param('debug/video_source') == '/pelicannon/image_thresh':
+            self._publisher_image_debug.publish(self._cv_br.cv2_to_imgmsg(thresh, encoding="passthrough"))
+
+        (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+                                     cv2.CHAIN_APPROX_SIMPLE)
+
+        rectangles = []
+        for c in cnts:
+            area = cv2.contourArea(c)
+            if area < int(self.coeff_min_area * frame.shape[0] * frame.shape[1]) or area > int(
+                    self.coeff_max_area * frame.shape[0] * frame.shape[1]):
+                continue
+            rectangles.append(Rectangle(cv2.boundingRect(c)))
+
+        # Store this frame as the next frame initial
+        self.frame_initial = frame_final
+
+        return rectangles
 
 class ObjectDetectorNode(object):
     def __init__(self, debug=False):
@@ -33,11 +140,9 @@ class ObjectDetectorNode(object):
 
     def _ros_init(self):
         rospy.init_node('object_detector')
-        self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=10)
+        self._publisher = rospy.Publisher('regions_of_interest', CategorizedRegionsOfInterest, queue_size=1)
         self._publisher_move = rospy.Publisher('/motor/move_angle', Float32, queue_size=1)
-
-        if rospy.get_param('object_detector/debug'):
-            self._angle_delta_image_publisher = rospy.Publisher('angle_delta_image', AngleDeltaImage, queue_size=100)
+        self._publisher_image_debug = rospy.Publisher('cv_peek', Image, queue_size=1)
 
         rospy.Subscriber("/webcam/image_raw", Image, self._camera_callback)
         rospy.Subscriber("/imu/data", Imu, self._imu_callback)
@@ -83,18 +188,12 @@ class ObjectDetectorNode(object):
 
         frame = self._cv_br.imgmsg_to_cv2(image, desired_encoding="passthrough")
 
+        if rospy.get_param('debug/video_source') == '/pelicannon/image_raw':
+            self._publisher_image_debug.publish(self._cv_br.cv2_to_imgmsg(frame, encoding="passthrough"))
+
         # Create grayscale versions and equalize
         frame_grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_grayscale = cv2.equalizeHist(frame_grayscale)
-
-        if rospy.get_param('object_detector/debug'):
-
-            self._imu_lock.acquire()
-            last_imu = [i for i in self._imu_queue]
-            self._imu_lock.release()
-
-            adi = AngleDeltaImage(self._last_image, image, last_imu)
-            self._angle_delta_image_publisher.publish(adi)
 
         av_x, av_y, av_z = self._compute_angular_velocity()
 
@@ -102,7 +201,7 @@ class ObjectDetectorNode(object):
         regions = []
 
         if rospy.get_param('object_detector/body_regions'):
-            haarcascade_regions = self._body_tracker.process_frame(frame_grayscale)
+            haarcascade_regions = self._body_tracker.process_frame(frame)
             for region in haarcascade_regions:
                 regions.append(
                     CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='body'))
@@ -110,7 +209,8 @@ class ObjectDetectorNode(object):
         if rospy.get_param('object_detector/motion_regions'):
             motion_regions = self._motion_detector.process_frame(frame_grayscale,
                                                                  phi=av_z * delta_t
-                                                                 if len(self._imu_queue) != 0 and abs(av_z) > 0.01 else None)
+                                                                 if len(self._imu_queue) != 0 and
+                                                                    abs(av_z * delta_t) > 0.01 else None)
             for region in motion_regions:
                 regions.append(
                     CategorizedRegionOfInterest(x=region.x, y=region.y, w=region.w, h=region.h, category='motion'))
@@ -118,7 +218,6 @@ class ObjectDetectorNode(object):
         self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
 
         for region in regions:
-            self._publisher_move.publish(0.)
 
             region_x_midpoint = (region.x + region.x + region.w) / 2.
             frame_midpoint = frame.shape[1] / 2
@@ -128,7 +227,10 @@ class ObjectDetectorNode(object):
             angle_coeff = delta_midpoint / frame_midpoint
             rot_angle = angle_coeff * 78 * np.pi / 180.
 
-            self._publisher_move.publish(rot_angle)
+            if region.category == 'body':
+                self._publisher_move.publish(rot_angle / 4.)
+            elif region.category == 'motion':
+                self._publisher_move.publish(rot_angle)
             break
 
         time_f = datetime.datetime.now()
