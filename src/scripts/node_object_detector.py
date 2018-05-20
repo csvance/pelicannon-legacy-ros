@@ -11,7 +11,6 @@ import rospy
 from pelicannon.msg import CategorizedRegionOfInterest, CategorizedRegionsOfInterest
 from sensor_msgs.msg import Image, Imu
 from std_msgs.msg import Float32
-from tracker import BodyTrackerPipeline, MotionTrackerPipeline
 
 
 class Rectangle(object):
@@ -71,22 +70,16 @@ class MotionTrackerPipeline(object):
         self._cv_br = CvBridge()
         self._publisher_image_debug = rospy.Publisher('cv_peek', Image, queue_size=1)
 
-    def process_frame(self, frame, phi=None, blur=True):
+    def process_frame(self, frame, phi=None):
 
         self._phi_history.append(phi if phi is not None else 0.0)
 
         if self.frame_initial is None:
-            if blur:
-                self.frame_initial = cv2.GaussianBlur(frame, (5, 5), 0)
-            else:
-                self.frame_initial = frame
+            self.frame_initial = frame
             return []
 
         frame_initial = self.frame_initial
-        if blur:
-            frame_final = cv2.GaussianBlur(frame, (5, 5), 0)
-        else:
-            frame_final = frame
+        frame_final = frame
 
         matrix_hist = np.array(self._phi_history)
         if np.max(np.abs(matrix_hist)) > 0.01:
@@ -121,6 +114,7 @@ class MotionTrackerPipeline(object):
         self.frame_initial = frame_final
 
         return rectangles
+
 
 class ObjectDetectorNode(object):
     def __init__(self, debug=False):
@@ -217,6 +211,8 @@ class ObjectDetectorNode(object):
 
         self._publisher.publish(CategorizedRegionsOfInterest(regions=regions))
 
+        # Give priority to body regions
+        regions.sort(key=lambda k: k.category, reverse=False)
         for region in regions:
 
             region_x_midpoint = (region.x + region.x + region.w) / 2.
